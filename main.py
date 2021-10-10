@@ -59,12 +59,21 @@ calgary_coords = [[
     (-114.325419, 50.847729),
 ]]
 
+alberta_coords = [[
+    (-119.921953, 53.212140),  # long, lat
+    (-114.548265, 49.017250),
+    (-110.021898, 49.002837),
+    (-110.021898, 59.994249),
+    (-119.997483, 60.005236),
+]]
+
+
 users = User.read_data("users.dat", User)
-calgary_users = limit_data_by_location(calgary_coords, users)
+calgary_users = limit_data_by_location(alberta_coords, users)
 venues = User.read_data("venues.dat", User)
-calgary_venues = limit_data_by_location(calgary_coords, venues)
+calgary_venues = limit_data_by_location(alberta_coords, venues)
 
 print(f"total number of users: {len(users)}")
-print(f"number of users in Calgary: {len(calgary_users)}")
+print(f"number of users in Alberta: {len(calgary_users)}")
 print(f"total number of venues: {len(venues)}")
-print(f"number of venues in Calgary: {len(calgary_venues)}")
+print(f"number of venues in Alberta: {len(calgary_venues)}")
