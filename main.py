@@ -4,43 +4,116 @@ from turfpy.measurement import boolean_point_in_polygon
 from geojson import Point, Polygon, Feature
 
 
-class UserVenue:
+class User:
     ID_INDEX = 0
     LAT_INDEX = 1
     LONG_INDEX = 2
 
+    def __init__(self, identifier, long, lat):
+        self.identifier = identifier
+        self.long = long
+        self.lat = lat
+
+    def get_string(self):
+        return f'{self.identifier} {self.long} {self.lat}'
+
     @staticmethod
-    def read_data(file_address, model_class):
-        data = []
-        with open(file_address, 'r') as file:
-            for line in file.readlines()[2:]:
-                record_data = [column.strip() for column in line.split("|")]
-                not_standard = False
-                for column in record_data:
-                    if len(column) == 0:
-                        not_standard = True
-                if not_standard:
-                    continue
-                data.append(model_class(
-                    identifier=int(record_data[UserVenue.ID_INDEX]),
-                    lat=float(record_data[UserVenue.LAT_INDEX]),
-                    long=float(record_data[UserVenue.LONG_INDEX]),
-                ))
-        return data
+    def create_from_raw_inputs(inputs):
+        return User(
+            identifier=int(inputs[User.ID_INDEX]),
+            lat=float(inputs[User.LAT_INDEX]),
+            long=float(inputs[User.LONG_INDEX]),
+        )
 
 
-class User(UserVenue):
+class Venue:
+    ID_INDEX = 0
+    LAT_INDEX = 1
+    LONG_INDEX = 2
+
     def __init__(self, identifier, long, lat):
         self.identifier = identifier
         self.long = long
         self.lat = lat
 
+    def get_string(self):
+        return f'{self.identifier} {self.long} {self.lat}'
 
-class Venue(UserVenue):
-    def __init__(self, identifier, long, lat):
+    @staticmethod
+    def create_from_raw_inputs(inputs):
+        return Venue(
+            identifier=int(inputs[Venue.ID_INDEX]),
+            lat=float(inputs[Venue.LAT_INDEX]),
+            long=float(inputs[Venue.LONG_INDEX]),
+        )
+
+
+class Rating:
+    USER_ID_INDEX = 0
+    VENUE_ID_INDEX = 1
+    RATE_INDEX = 2
+
+    def __init__(self, user_id, venue_id, rate):
+        self.user_id = user_id
+        self.venue_id = venue_id
+        self.rate = rate
+
+    def get_string(self):
+        return f'{self.user_id} {self.venue_id} {self.rate}'
+
+    @staticmethod
+    def create_from_raw_inputs(inputs):
+        return Rating(
+            user_id=int(inputs[Rating.USER_ID_INDEX]),
+            venue_id=int(inputs[Rating.VENUE_ID_INDEX]),
+            rate=int(inputs[Rating.RATE_INDEX]),
+        )
+
+
+class Checkin:
+    ID_INDEX = 0
+    USER_ID_INDEX = 1
+    VENUE_ID_INDEX = 2
+    LAT_INDEX = 3
+    LONG_INDEX = 4
+    CREATED_AT_INDEX = 5
+
+    def __init__(self, identifier, user_id, venue_id, long, lat, created_at):
         self.identifier = identifier
+        self.user_id = user_id
+        self.venue_id = venue_id
         self.long = long
         self.lat = lat
+        self.created_at = created_at
+
+    def get_string(self):
+        return f'{self.identifier} {self.user_id} {self.venue_id} {self.long} {self.lat} {self.created_at}'
+
+    @staticmethod
+    def create_from_raw_inputs(inputs):
+        return Checkin(
+            identifier=int(inputs[Checkin.ID_INDEX]),
+            user_id=int(inputs[Checkin.USER_ID_INDEX]),
+            venue_id=int(inputs[Checkin.VENUE_ID_INDEX]),
+            lat=float(inputs[Checkin.LAT_INDEX]),
+            long=float(inputs[Checkin.LONG_INDEX]),
+            created_at=inputs[Checkin.CREATED_AT_INDEX],
+        )
+
+
+def read_data(file_address, model_class):
+    data = []
+    with open(file_address, 'r') as file:
+        for line in file.readlines()[2:]:
+            record_data = [column.strip() for column in line.split("|")]
+            not_standard = False
+            for column in record_data:
+                if len(column) == 0:
+                    not_standard = True
+            if not_standard:
+                continue
+            data.append(model_class.create_from_raw_inputs(inputs=record_data))
+    return data
 
 
 def limit_data_by_location(polygon_coords: List[List[Tuple]], model_records):
@@ -52,12 +125,28 @@ def limit_data_by_location(polygon_coords: List[List[Tuple]], model_records):
     return result
 
 
-calgary_coords = [[
-    (-114.325419, 51.214159),  # long, lat
-    (-113.865366, 51.214159),
-    (-113.865366, 50.847729),
-    (-114.325419, 50.847729),
-]]
+def limit_records_by_user_venue(records, users, venues):
+    user_ids = set([user.identifier for user in users])
+    venues_ids = set([venue.identifier for venue in venues])
+    result = []
+    for record in records:
+        if record.user_id in user_ids and record.venue_id in venues_ids:
+            result.append(record)
+    return result
+
+
+def store_records(records, file_address):
+    with open(file_address, 'w') as file:
+        for record in records:
+            file.write(f'{record.get_string()}\n')
+
+
+# calgary_coords = [[
+#     (-114.325419, 51.214159),  # long, lat
+#     (-113.865366, 51.214159),
+#     (-113.865366, 50.847729),
+#     (-114.325419, 50.847729),
+# ]]
 
 alberta_coords = [[
     (-119.921953, 53.212140),  # long, lat
@@ -67,13 +156,41 @@ alberta_coords = [[
     (-119.997483, 60.005236),
 ]]
 
+# california_coords = [[
+#     (-124.371877, 41.990849),
+#     (-119.975840, 41.999506),
+#     (-120.002350, 38.986355),
+#     (-114.594288, 34.996728),
+#     (-114.700328, 32.729648),
+#     (-117.205534, 32.551061),
+#     (-125.953869, 35.580972)
+# ]]
 
-users = User.read_data("users.dat", User)
-calgary_users = limit_data_by_location(alberta_coords, users)
-venues = User.read_data("venues.dat", User)
-calgary_venues = limit_data_by_location(alberta_coords, venues)
+san_francisco_coords = [[
+    (-122.553454, 37.812965),
+    (-122.359602, 37.817252),
+    (-122.346337, 37.708571),
+    (-122.523607, 37.708332)
+]]
 
-print(f"total number of users: {len(users)}")
-print(f"number of users in Alberta: {len(calgary_users)}")
-print(f"total number of venues: {len(venues)}")
-print(f"number of venues in Alberta: {len(calgary_venues)}")
+place_name = "San Francisco"
+
+users = read_data("users.dat", User)
+venues = read_data("venues.dat", Venue)
+ratings = read_data("ratings.dat", Rating)
+checkins = read_data("checkins.dat", Checkin)
+
+alberta_users = limit_data_by_location(san_francisco_coords, users)
+alberta_venues = limit_data_by_location(san_francisco_coords, venues)
+alberta_ratings = limit_records_by_user_venue(ratings, alberta_users, alberta_venues)
+alberta_checkins = limit_records_by_user_venue(checkins, alberta_users, alberta_venues)
+
+print(f"total number of users: {len(users)}, users in {place_name}: {len(alberta_users)}")
+print(f"total number of venues: {len(venues)}, venues in {place_name}: {len(alberta_venues)}")
+print(f"total number of ratings: {len(ratings)}, ratings in {place_name}: {len(alberta_ratings)}")
+print(f"total number of checkins: {len(checkins)}, checkins in {place_name}: {len(alberta_checkins)}")
+
+store_records(alberta_users, "data/users.txt")
+store_records(alberta_venues, "data/venues.txt")
+store_records(alberta_ratings, "data/ratings.txt")
+store_records(alberta_checkins, "data/checkins.txt")
