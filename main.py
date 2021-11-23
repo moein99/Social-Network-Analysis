@@ -1,5 +1,4 @@
 import networkx as nx
-from networkx import betweenness_centrality
 
 from graph import Graph
 from models import clean_data
