@@ -1,6 +1,8 @@
 import csv
 import itertools
+import os
 import pickle
+
 from tqdm import tqdm
 import networkx as nx
 import statistics
@@ -11,9 +13,58 @@ class Graph:
     DATA_ADDRESS = "data"
     GRAPH_FILE_NAME = "graph.txt"
     JUDGEMENT_VALIDITY_LIMIT = 3  # if there are more common venues than this, judgement_validity will be 1
+    VENUE_METADATA_FIELD = "venue_ratings"
 
     def __init__(self):
         self.graph = self.graph = nx.Graph()
+
+    def get_average_influence_for_top_bc(self, top_bc_percentage_start, top_bc_percentage_end):
+        bc_values = [(user_id, bc_val) for user_id, bc_val in self.__get_users_values().items()]
+        bc_values.sort(key=lambda k: k[1])
+        end = len(bc_values) - int(len(bc_values) * top_bc_percentage_start)
+        start = len(bc_values) - int(len(bc_values) * top_bc_percentage_end)
+        top_bc_users = [user_id for user_id, _ in bc_values[start:end]]
+        influences = list(map(self.__calculate_user_influence, top_bc_users))
+        return statistics.mean(influences)
+
+    def __calculate_user_influence(self, user_id):
+        total_common_venues_with_neighbors = 0
+        total_influences_on_neighbors = 0
+        for venue_id, user_rate in self.graph.nodes[user_id][self.VENUE_METADATA_FIELD].items():
+            for node in self.graph.neighbors(user_id):
+                if not self.graph.nodes[node][self.VENUE_METADATA_FIELD].get(venue_id):
+                    continue
+                total_common_venues_with_neighbors += 1
+                if int(user_rate) - 1 < int(self.graph.nodes[node][self.VENUE_METADATA_FIELD][venue_id]) < int(user_rate) + 1:
+                    total_influences_on_neighbors += 1
+        return total_influences_on_neighbors / total_common_venues_with_neighbors
+
+    def __get_users_values(self):
+        venue_ratings_percentage = self.__venue_ratings_percentage()
+        values = {}
+        for node in self.graph.nodes:
+            rates = []
+            for venue_id, rate in self.graph.nodes[node][self.VENUE_METADATA_FIELD].items():
+                rates.append(venue_ratings_percentage[venue_id][rate])
+            values[node] = (sum(rates) / len(rates))
+        return values
+
+    def __venue_ratings_percentage(self):
+        ratings = Rating.read_ratings(f'{self.DATA_ADDRESS}/ratings.txt')
+        venue_ratings_percentage = {}
+        for rate in ratings:
+            if venue_ratings_percentage.get(rate.venue_id):
+                venue_ratings_percentage[rate.venue_id][rate.rate] += 1
+            else:
+                venue_ratings_percentage[rate.venue_id] = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+                venue_ratings_percentage[rate.venue_id][rate.rate] += 1
+
+        for venue in venue_ratings_percentage.values():
+            s = sum(venue.values())
+            for key in venue:
+                venue[key] = venue[key] / s
+
+        return venue_ratings_percentage
 
     def set_nodes_and_edges(self):
         user_venue_ratings = self.__get_user_venue_ratings()
@@ -29,6 +80,8 @@ class Graph:
             judgement_validity = self.__get_judgement_validity(len(temp_rating_diffs))
             if len(temp_rating_diffs) > 0:
                 self.graph.add_edge(pair[0], pair[1], weight=statistics.mean(temp_rating_diffs) * judgement_validity)
+                self.graph.nodes[pair[0]][self.VENUE_METADATA_FIELD] = user_venue_ratings[pair[0]]
+                self.graph.nodes[pair[1]][self.VENUE_METADATA_FIELD] = user_venue_ratings[pair[1]]
 
     def __get_user_venue_ratings(self):
         ratings = Rating.read_ratings(f'{self.DATA_ADDRESS}/ratings.txt')
