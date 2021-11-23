@@ -15,13 +15,12 @@ class Graph:
     GRAPH_FILE_NAME = "graph.txt"
     JUDGEMENT_VALIDITY_LIMIT = 3  # if there are more common venues than this, judgement_validity will be 1
     VENUE_METADATA_FIELD = "venue_ratings"
-    BC_FILE_ADDRESS = f"{DATA_ADDRESS}/bc.txt"
 
     def __init__(self):
         self.graph = self.graph = nx.Graph()
 
     def get_average_influence_for_top_bc(self, top_bc_percentage_start, top_bc_percentage_end):
-        bc_values = [(user_id, bc_val) for user_id, bc_val in self.__get_betweenness_centrality().items()]
+        bc_values = [(user_id, bc_val) for user_id, bc_val in self.__get_users_values().items()]
         bc_values.sort(key=lambda k: k[1])
         end = len(bc_values) - int(len(bc_values) * top_bc_percentage_start)
         start = len(bc_values) - int(len(bc_values) * top_bc_percentage_end)
@@ -41,12 +40,32 @@ class Graph:
                     total_influences_on_neighbors += 1
         return total_influences_on_neighbors / total_common_venues_with_neighbors
 
-    def __get_betweenness_centrality(self):
-        if os.path.isfile(self.BC_FILE_ADDRESS):
-            return pickle.load(open(self.BC_FILE_ADDRESS, 'rb'))
-        results = betweenness_centrality(self.graph, normalized=True)
-        pickle.dump(results, open(self.BC_FILE_ADDRESS, 'wb'))
-        return results
+    def __get_users_values(self):
+        venue_ratings_percentage = self.__venue_ratings_percentage()
+        values = {}
+        for node in self.graph.nodes:
+            rates = []
+            for venue_id, rate in self.graph.nodes[node][self.VENUE_METADATA_FIELD].items():
+                rates.append(venue_ratings_percentage[venue_id][rate])
+            values[node] = (sum(rates) / len(rates))
+        return values
+
+    def __venue_ratings_percentage(self):
+        ratings = Rating.read_ratings(f'{self.DATA_ADDRESS}/ratings.txt')
+        venue_ratings_percentage = {}
+        for rate in ratings:
+            if venue_ratings_percentage.get(rate.venue_id):
+                venue_ratings_percentage[rate.venue_id][rate.rate] += 1
+            else:
+                venue_ratings_percentage[rate.venue_id] = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+                venue_ratings_percentage[rate.venue_id][rate.rate] += 1
+
+        for venue in venue_ratings_percentage.values():
+            s = sum(venue.values())
+            for key in venue:
+                venue[key] = venue[key] / s
+
+        return venue_ratings_percentage
 
     def set_nodes_and_edges(self):
         user_venue_ratings = self.__get_user_venue_ratings()
