@@ -140,6 +140,37 @@ class Checkin:
         )
 
 
+class Friendship:
+    FIRST_INDEX = 0
+    SECOND_INDEX = 1
+
+    def __init__(self, first, second):
+        self.first = first
+        self.second = second
+
+    def get_string(self):
+        return f'{self.first} {self.second}'
+
+    @staticmethod
+    def create_from_raw_inputs(inputs):
+        return Friendship(
+            first=inputs[Friendship.FIRST_INDEX],
+            second=inputs[Friendship.SECOND_INDEX],
+        )
+
+    @staticmethod
+    def read_friendships(file_addr):
+        result = []
+        with open(file_addr, 'r') as file:
+            for line in file.readlines():
+                inputs = line.split()
+                result.append(Friendship(
+                    first=inputs[Friendship.FIRST_INDEX],
+                    second=inputs[Friendship.SECOND_INDEX]
+                ))
+        return result
+
+
 def read_data(file_address, model_class):
     data = []
     with open(file_address, 'r') as file:
@@ -172,6 +203,18 @@ def limit_records_by_user_venue(records, users, venues):
         if record.user_id in user_ids and record.venue_id in venues_ids:
             result.append(record)
     return result
+
+
+def store_limited_friendships(friendships):
+    users = set()
+    with open("data/users.txt", 'r') as file:
+        for line in file.readlines():
+            users.add(line.split()[0])
+
+    with open("data/friendships.txt", 'w') as file:
+        for friendship in friendships:
+            if friendship.first in users and friendship.second in users:
+                file.write(f"{friendship.get_string()}\n")
 
 
 def store_records(records, file_address):
@@ -209,6 +252,10 @@ def clean_data():
     store_records(san_francisco_venues, "data/venues.txt")
     store_records(san_francisco_ratings, "data/ratings.txt")
     store_records(san_francisco_checkins, "data/checkins.txt")
+
+    friendships = read_data("socialgraph.dat", Friendship)
+    store_limited_friendships(friendships)
+
 
 # calgary_coords = [[
 #     (-114.325419, 51.214159),  # long, lat
