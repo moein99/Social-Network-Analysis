@@ -88,7 +88,7 @@ class Graph:
                 following_rate_for_venue = self.graph.nodes[following][self.VENUE_METADATA_FIELD].get(venue_id, None)
                 if following_rate_for_venue is not None:
                     total_records += 1
-                    if int(user_rate_for_venue) - 1 <= int(following_rate_for_venue) <= int(user_rate_for_venue) + 1:
+                    if following_rate_for_venue == user_rate_for_venue:
                         total_influences += 1
         if total_records == 0:
             return None
