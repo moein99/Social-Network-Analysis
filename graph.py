@@ -2,6 +2,7 @@ import csv
 import itertools
 import os
 import pickle
+import random
 
 from tqdm import tqdm
 import networkx as nx
@@ -168,21 +169,41 @@ class Graph:
         self.set_nodes_and_edges()
         pickle.dump(self.graph, open(f'{self.DATA_ADDRESS}/{self.GRAPH_FILE_NAME}', 'wb'))
 
-    def export_graph_to_csv(self):
-        with open(f"{self.DATA_ADDRESS}/nodes.csv", 'w', newline='') as file:
+    def export_graph_to_csv(self, graph, prefix=""):
+        with open(f"{self.DATA_ADDRESS}/{prefix}nodes.csv", 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["ID", "longitude", "latitude"])
-            for node in self.graph.nodes:
+            for node in graph.nodes:
                 writer.writerow([
                     node,
-                    self.graph.nodes[node][self.LONGITUDE_FIELD],
-                    self.graph.nodes[node][self.LATITUDE_FIELD]
+                    graph.nodes[node][self.LONGITUDE_FIELD],
+                    graph.nodes[node][self.LATITUDE_FIELD]
                 ])
-        with open(f"{self.DATA_ADDRESS}/edges.csv", 'w', newline='') as file:
+        with open(f"{self.DATA_ADDRESS}/{prefix}edges.csv", 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["Source", "Target", "weight"])
-            for edge in self.graph.edges:
-                writer.writerow([edge[0], edge[1], self.graph.get_edge_data(*edge)["weight"]])
+            for edge in graph.edges:
+                writer.writerow([edge[0], edge[1], graph.get_edge_data(*edge)["weight"]])
+
+    def get_limited_random_graph(self, num_of_nodes, seed=None):
+        assert num_of_nodes < self.graph.number_of_nodes()
+        if seed is not None:
+            random.seed(seed)
+        nodes = set(random.sample(self.graph.nodes, num_of_nodes))
+        new_graph = nx.Graph()
+        for node1, node2, edge_data in self.graph.edges(data=True):
+            if node1 not in nodes or node2 not in nodes:
+                continue
+            new_graph.add_edge(node1, node2, weight=edge_data["weight"])
+            new_graph.nodes[node1][self.VENUE_METADATA_FIELD] = self.graph.nodes[node1][self.VENUE_METADATA_FIELD]
+            new_graph.nodes[node2][self.VENUE_METADATA_FIELD] = self.graph.nodes[node2][self.VENUE_METADATA_FIELD]
+            new_graph.nodes[node1][self.LONGITUDE_FIELD] = self.graph.nodes[node1][self.LONGITUDE_FIELD]
+            new_graph.nodes[node1][self.LATITUDE_FIELD] = self.graph.nodes[node1][self.LATITUDE_FIELD]
+            new_graph.nodes[node2][self.LONGITUDE_FIELD] = self.graph.nodes[node2][self.LONGITUDE_FIELD]
+            new_graph.nodes[node2][self.LATITUDE_FIELD] = self.graph.nodes[node2][self.LATITUDE_FIELD]
+            new_graph.nodes[node1][self.FOLLOWING_METADATA_FIELD] = self.graph.nodes[node1][self.FOLLOWING_METADATA_FIELD]
+            new_graph.nodes[node2][self.FOLLOWING_METADATA_FIELD] = self.graph.nodes[node2][self.FOLLOWING_METADATA_FIELD]
+        return new_graph
 
     def read_graph(self):
         self.graph = pickle.load(open(f'{self.DATA_ADDRESS}/{self.GRAPH_FILE_NAME}', 'rb'))
