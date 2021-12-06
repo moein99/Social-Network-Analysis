@@ -6,7 +6,7 @@ import pickle
 from tqdm import tqdm
 import networkx as nx
 import statistics
-from models import Rating, Friendship
+from models import Rating, Friendship, User
 
 
 class Graph:
@@ -15,6 +15,8 @@ class Graph:
     JUDGEMENT_VALIDITY_LIMIT = 3  # if there are more common venues than this, judgement_validity will be 1
     VENUE_METADATA_FIELD = "venue_ratings"
     FOLLOWING_METADATA_FIELD = "followings"
+    LONGITUDE_FIELD = "longitude"
+    LATITUDE_FIELD = "latitude"
 
     def __init__(self):
         self.graph = self.graph = nx.Graph()
@@ -97,6 +99,7 @@ class Graph:
     def set_nodes_and_edges(self):
         user_venue_ratings = self.__get_user_venue_ratings()
         friendships = self.__get_friendships()
+        users = self.__get_users()
         user_pairs = list(itertools.combinations(user_venue_ratings, 2))
         print("calculating edges ...")
         for pair in tqdm(user_pairs):
@@ -112,6 +115,13 @@ class Graph:
 
                 self.graph.nodes[pair[0]][self.VENUE_METADATA_FIELD] = user_venue_ratings[pair[0]]
                 self.graph.nodes[pair[1]][self.VENUE_METADATA_FIELD] = user_venue_ratings[pair[1]]
+
+                longitude, latitude = users[pair[0]]
+                self.graph.nodes[pair[0]][self.LONGITUDE_FIELD] = longitude
+                self.graph.nodes[pair[0]][self.LATITUDE_FIELD] = latitude
+                longitude, latitude = users[pair[1]]
+                self.graph.nodes[pair[1]][self.LONGITUDE_FIELD] = longitude
+                self.graph.nodes[pair[1]][self.LATITUDE_FIELD] = latitude
 
         for node in tqdm(self.graph.nodes):
             if friendships.get(node) is None:
@@ -146,6 +156,9 @@ class Graph:
                 followings[friendship.first] = {friendship.second}
         return followings
 
+    def __get_users(self):
+        return {user.identifier: (user.long, user.lat) for user in User.read_users(f"{self.DATA_ADDRESS}/users.txt")}
+
     def __get_judgement_validity(self, amount):
         if amount >= self.JUDGEMENT_VALIDITY_LIMIT:
             return 1
@@ -156,16 +169,20 @@ class Graph:
         pickle.dump(self.graph, open(f'{self.DATA_ADDRESS}/{self.GRAPH_FILE_NAME}', 'wb'))
 
     def export_graph_to_csv(self):
-        with open(f"{self.DATA_ADDRESS}/nodes.csv", 'w') as file:
+        with open(f"{self.DATA_ADDRESS}/nodes.csv", 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["ID"])
+            writer.writerow(["ID", "longitude", "latitude"])
             for node in self.graph.nodes:
-                writer.writerow([node])
-        with open(f"{self.DATA_ADDRESS}/edges.csv", 'w') as file:
+                writer.writerow([
+                    node,
+                    self.graph.nodes[node][self.LONGITUDE_FIELD],
+                    self.graph.nodes[node][self.LATITUDE_FIELD]
+                ])
+        with open(f"{self.DATA_ADDRESS}/edges.csv", 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["Source", "Target"])
+            writer.writerow(["Source", "Target", "weight"])
             for edge in self.graph.edges:
-                writer.writerow([edge[0], edge[1]])
+                writer.writerow([edge[0], edge[1], self.graph.get_edge_data(*edge)["weight"]])
 
     def read_graph(self):
         self.graph = pickle.load(open(f'{self.DATA_ADDRESS}/{self.GRAPH_FILE_NAME}', 'rb'))

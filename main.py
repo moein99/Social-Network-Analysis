@@ -7,8 +7,8 @@ from models import clean_data
 # clean_data()
 graph = Graph()
 # graph.create_graph_from_inputs()
-# graph.export_graph_to_csv()
 graph.read_graph()
+# graph.export_graph_to_csv()
 print(nx.info(graph.graph))
 
 # Question 1
