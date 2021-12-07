@@ -2,10 +2,12 @@ import networkx as nx
 
 from graph import Graph
 from models import clean_data
+from random_graph_generator import Generator
 
+Generator.calculate_metrics_on_random_graphs(100)
 
 # clean_data()
-graph = Graph()
+graph = Graph(data_dir="data")
 # graph.create_graph_from_inputs()
 graph.read_graph()
 # graph.export_graph_to_csv(graph.graph)
