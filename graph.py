@@ -43,7 +43,7 @@ class Graph:
                 if not self.graph.nodes[node][self.VENUE_METADATA_FIELD].get(venue_id):
                     continue
                 total_common_venues_with_neighbors += 1
-                if int(user_rate) - 1 < int(self.graph.nodes[node][self.VENUE_METADATA_FIELD][venue_id]) < int(user_rate) + 1:
+                if int(self.graph.nodes[node][self.VENUE_METADATA_FIELD][venue_id]) == int(user_rate):
                     total_influences_on_neighbors += 1
         return total_influences_on_neighbors / total_common_venues_with_neighbors
 

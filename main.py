@@ -9,8 +9,8 @@ graph = Graph()
 # graph.create_graph_from_inputs()
 graph.read_graph()
 # graph.export_graph_to_csv(graph.graph)
-new_graph = graph.get_limited_random_graph(num_of_nodes=1200, seed=1)
-graph.export_graph_to_csv(graph=new_graph, prefix="random_seed_5_nodes_1000_")
+# new_graph = graph.get_limited_random_graph(num_of_nodes=1200, seed=1)
+# graph.export_graph_to_csv(graph=new_graph, prefix="random_seed_5_nodes_1000_")
 print(nx.info(graph.graph))
 
 # Question 1
