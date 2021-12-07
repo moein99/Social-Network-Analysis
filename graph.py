@@ -11,7 +11,6 @@ from models import Rating, Friendship, User
 
 
 class Graph:
-    DATA_ADDRESS = "data"
     GRAPH_FILE_NAME = "graph.txt"
     JUDGEMENT_VALIDITY_LIMIT = 3  # if there are more common venues than this, judgement_validity will be 1
     VENUE_METADATA_FIELD = "venue_ratings"
@@ -19,8 +18,9 @@ class Graph:
     LONGITUDE_FIELD = "longitude"
     LATITUDE_FIELD = "latitude"
 
-    def __init__(self):
-        self.graph = self.graph = nx.Graph()
+    def __init__(self, data_dir):
+        self.graph = nx.Graph()
+        self.data_dir = data_dir
 
     def get_average_influence_for_top_influential_users(
             self,
@@ -58,7 +58,7 @@ class Graph:
         return values
 
     def __venue_ratings_percentage(self):
-        ratings = Rating.read_ratings(f'{self.DATA_ADDRESS}/ratings.txt')
+        ratings = Rating.read_ratings(f'{self.data_dir}/ratings.txt')
         venue_ratings_percentage = {}
         for rate in ratings:
             if venue_ratings_percentage.get(rate.venue_id):
@@ -80,7 +80,7 @@ class Graph:
             if self.graph.nodes[node][self.FOLLOWING_METADATA_FIELD] is None:
                 continue
             friends_influence_on_users.append(self.__get_friends_influence_on_user(node))
-        friends_influence_on_users = list(filter(None, friends_influence_on_users))
+        friends_influence_on_users = [item for item in friends_influence_on_users if item is not None]
         return statistics.mean(friends_influence_on_users)
 
     def __get_friends_influence_on_user(self, node):
@@ -137,7 +137,7 @@ class Graph:
             self.graph.nodes[node][self.FOLLOWING_METADATA_FIELD] = friendships.get(node)
 
     def __get_user_venue_ratings(self):
-        ratings = Rating.read_ratings(f'{self.DATA_ADDRESS}/ratings.txt')
+        ratings = Rating.read_ratings(f'{self.data_dir}/ratings.txt')
         user_venue_ratings = {}
         for rate in ratings:
             if user_venue_ratings.get(rate.user_id):
@@ -148,7 +148,7 @@ class Graph:
         return user_venue_ratings
 
     def __get_friendships(self):
-        friendships = Friendship.read_friendships(f'{self.DATA_ADDRESS}/friendships.txt')
+        friendships = Friendship.read_friendships(f'{self.data_dir}/friendships.txt')
         followings = {}
         for friendship in friendships:
             if followings.get(friendship.first):
@@ -158,7 +158,7 @@ class Graph:
         return followings
 
     def __get_users(self):
-        return {user.identifier: (user.long, user.lat) for user in User.read_users(f"{self.DATA_ADDRESS}/users.txt")}
+        return {user.identifier: (user.long, user.lat) for user in User.read_users(f"{self.data_dir}/users.txt")}
 
     def __get_judgement_validity(self, amount):
         if amount >= self.JUDGEMENT_VALIDITY_LIMIT:
@@ -167,10 +167,10 @@ class Graph:
 
     def create_graph_from_inputs(self):
         self.set_nodes_and_edges()
-        pickle.dump(self.graph, open(f'{self.DATA_ADDRESS}/{self.GRAPH_FILE_NAME}', 'wb'))
+        pickle.dump(self.graph, open(f'{self.data_dir}/{self.GRAPH_FILE_NAME}', 'wb'))
 
     def export_graph_to_csv(self, graph, prefix=""):
-        with open(f"{self.DATA_ADDRESS}/{prefix}nodes.csv", 'w', newline='') as file:
+        with open(f"{self.data_dir}/{prefix}nodes.csv", 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["ID", "longitude", "latitude"])
             for node in graph.nodes:
@@ -179,7 +179,7 @@ class Graph:
                     graph.nodes[node][self.LONGITUDE_FIELD],
                     graph.nodes[node][self.LATITUDE_FIELD]
                 ])
-        with open(f"{self.DATA_ADDRESS}/{prefix}edges.csv", 'w', newline='') as file:
+        with open(f"{self.data_dir}/{prefix}edges.csv", 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["Source", "Target", "weight"])
             for edge in graph.edges:
@@ -206,4 +206,4 @@ class Graph:
         return new_graph
 
     def read_graph(self):
-        self.graph = pickle.load(open(f'{self.DATA_ADDRESS}/{self.GRAPH_FILE_NAME}', 'rb'))
+        self.graph = pickle.load(open(f'{self.data_dir}/{self.GRAPH_FILE_NAME}', 'rb'))
