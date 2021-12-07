@@ -62,9 +62,8 @@ class Generator:
         followings_inf = []
         for i in range(1, limit + 1):
             graph = Graph(data_dir=f"random_graphs/{i}")
-            graph.create_graph_from_inputs()
+            # graph.create_graph_from_inputs()
             graph.read_graph()
-            print(nx.info(graph.graph))
 
             # Question 1
             avg_degrees.append(sum(d for n, d in graph.graph.degree()) / graph.graph.number_of_nodes())
@@ -73,6 +72,7 @@ class Generator:
             inf_top_20_30.append(graph.get_average_influence_for_top_influential_users(0.2, 0.3))
             # Question 2
             followings_inf.append(graph.get_average_friends_influence_on_users_rate())
+            print(f"{i}/{limit} random graphs processed")
 
         print(f"Average degree for random models: {statistics.mean(avg_degrees)}")
         print(f"Average influence for top 10% for random models is {statistics.mean(inf_top_10)}")

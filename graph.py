@@ -99,7 +99,6 @@ class Graph:
 
     def set_nodes_and_edges(self):
         user_venue_ratings = self.__get_user_venue_ratings()
-        friendships = self.__get_friendships()
         users = self.__get_users()
         user_pairs = list(itertools.combinations(user_venue_ratings, 2))
         print("calculating edges ...")
@@ -123,7 +122,9 @@ class Graph:
                 longitude, latitude = users[pair[1]]
                 self.graph.nodes[pair[1]][self.LONGITUDE_FIELD] = longitude
                 self.graph.nodes[pair[1]][self.LATITUDE_FIELD] = latitude
+        self.__update_data_files()
 
+        friendships = self.__get_friendships()
         for node in tqdm(self.graph.nodes):
             if friendships.get(node) is None:
                 self.graph.nodes[node][self.FOLLOWING_METADATA_FIELD] = None
@@ -207,3 +208,45 @@ class Graph:
 
     def read_graph(self):
         self.graph = pickle.load(open(f'{self.data_dir}/{self.GRAPH_FILE_NAME}', 'rb'))
+
+    def __update_data_files(self):
+        nodes = set(self.graph.nodes)
+
+        # Update friendships
+        with open(f"{self.data_dir}/friendships.txt", 'r') as file:
+            friendship_rows = file.readlines()
+        with open(f"{self.data_dir}/friendships.txt", 'w') as file:
+            for row in friendship_rows:
+                user1, user2 = row.split()
+                if user1 in nodes and user2 in nodes:
+                    file.write(row)
+
+        # Update users
+        with open(f"{self.data_dir}/users.txt", 'r') as file:
+            users_rows = file.readlines()
+        with open(f"{self.data_dir}/users.txt", 'w') as file:
+            for row in users_rows:
+                user = row.split()[0]
+                if user in nodes:
+                    file.write(row)
+
+        # Update ratings.txt
+        with open(f"{self.data_dir}/ratings.txt", 'r') as file:
+            ratings_rows = file.readlines()
+        with open(f"{self.data_dir}/ratings.txt", 'w') as file:
+            for row in ratings_rows:
+                user = row.split()[0]
+                if user in nodes:
+                    file.write(row)
+
+        # Update checkins.txt
+        with open(f"{self.data_dir}/checkins.txt", 'r') as file:
+            checkins_rows = file.readlines()
+        with open(f"{self.data_dir}/checkins.txt", 'w') as file:
+            for row in checkins_rows:
+                user = row.split()[1]
+                if user in nodes:
+                    file.write(row)
+
+
+
