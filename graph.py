@@ -9,6 +9,9 @@ import networkx as nx
 import statistics
 from models import Rating, Friendship, User
 
+import matplotlib.pyplot as plt
+import collections
+
 
 class Graph:
     GRAPH_FILE_NAME = "graph.txt"
@@ -18,9 +21,38 @@ class Graph:
     LONGITUDE_FIELD = "longitude"
     LATITUDE_FIELD = "latitude"
 
+    def plotDegDistLogLog(self, loglog=True):
+        degree_sequence = sorted([d for n, d in self.graph.degree()], reverse=True)  # degree sequence
+        degreeCount = collections.Counter(degree_sequence)
+        deg, cnt = zip(*degreeCount.items())
+        frac = [n / self.graph.number_of_nodes() for n in cnt]
+        fig, ax = plt.subplots()
+
+        plt.plot(deg, frac, 'o')
+        # m, b = np.polyfit(deg, frac, 1)
+        # plt.plot(deg, int(m) * frac + b)
+        if loglog:
+            ax.set_yscale('log', nonposy='clip')
+            ax.set_xscale('log', nonposx='clip')
+        plt.ylabel("Fraction of nodes")
+        plt.xlabel("Degree")
+        plt.show()
+
+    def plot_clustring(self):
+        d = nx.clustering(self.graph)
+        l = []
+        for x in d:
+            l.append(d[x])
+        plt.ylabel("Number of nodes")
+        plt.xlabel("clustring")
+        plt.hist(l)
+        plt.show()
+
     def __init__(self, data_dir):
         self.graph = nx.Graph()
         self.data_dir = data_dir
+
+
 
     def get_average_influence_for_top_influential_users(
             self,
